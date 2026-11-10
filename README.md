@@ -5,8 +5,8 @@
 A process card and a set of runnable checkers for one job: building a tool that someone will
 use to **make a decision** (buy / select / rank / flag / approve), and auditing one that already exists.
 
-Not a tutorial. It is a checklist you execute, plus four zero-dependency checkers — three of
-which exit non-zero on purpose.
+Not a tutorial. It is a checklist you execute, plus four zero-dependency checkers, all of which
+exit non-zero when they actually find something.
 
 - Pure Python standard library (3.9+), zero dependencies
 - Ships as an agent skill (`SKILL.md`) or as a plain A4 process card
@@ -27,7 +27,9 @@ once by a human who has watched someone use it), and the last section of any rep
 
 ```
 SKILL.md                     the entry point: 5-second router, triage, hard gates, M1–M5
-README.md                    this file
+README.md / README.zh.md     this file, in English and Chinese
+LICENSE                      CC BY 4.0 legal code
+.gitignore                   pycache and editor noise
 scripts/
   doctrine_check.py          pre-delivery check: required sections, banned words, --gates
   doc_dup_scan.py            cross-file duplicate lines; how many places one fact lives in

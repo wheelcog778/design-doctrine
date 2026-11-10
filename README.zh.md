@@ -23,6 +23,8 @@
 ```
 SKILL.md                     执行入口：5 秒路由、分诊、硬闸门、M1–M5
 README.md / README.zh.md     给人看，非执行件
+LICENSE                      CC BY 4.0 法律文本
+.gitignore                   pycache 与编辑器垃圾
 scripts/
   doctrine_check.py          交结论前自检：必需节、禁用语、--gates 状态卡
   doc_dup_scan.py            跨文件重复行、一条事实有几个可编辑落点

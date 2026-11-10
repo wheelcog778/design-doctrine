@@ -1,4 +1,4 @@
-# Design Doctrine for Decision Tools · v2.20.0
+# Design Doctrine for Decision Tools · v2.20.1
 
 > Build the thing that can kill your idea — before you build your idea.
 
@@ -73,12 +73,12 @@ when the router points there.
 - It does not supply thresholds. Every gate in `veto-gates.md` says "calibrate this in your domain"
   and then hands you the calibration procedure (`workflow.md` §9). A package that ships universal
   cut-offs is teaching you to copy someone else's noise floor.
-- It is not validated outside its original domain.
+- It does not claim methodological efficacy in any domain. The scripts are tested; the rules remain hypotheses.
 
-**Calibration domain, stated plainly:** A-share quantitative stock selection and backtesting.
-The L0–L5 tiers and the M1 line were calibrated there. The domain vocabulary that survives in the
-examples — candidates, position sizing, transaction cost — is deliberate, not residue. If you work
-in another domain, keep the gate structure and re-derive every threshold from scratch.
+**Calibration status, stated plainly:** this public version supplies no domain calibration or measured evidence.
+Re-derive the L0–L5 tiers and the M1 line in your own domain. Candidate, capacity and cost vocabulary in the
+examples is illustrative, not information about the internal projects. Keep the gate structure and re-derive
+every threshold from scratch.
 
 ## Evidence level: assumption-grade (L0–L1)
 
@@ -108,6 +108,8 @@ the method. Two copies coexisting is not drift — but only if the relationship 
 is what this section is for.
 
 ## Changelog
+
+**v2.20.1** — sanitization and checker fixes from an independent review: selftest fixture no longer carries real measurements; residual measured t-values removed; domain naming abstracted to a calibration-status statement; fence parsing hardened (longer closing fences, unclosed fences); code-block numbers no longer count as registered evidence; banned-word exemption narrowed to the quoted span that follows the discussion phrase instead of the whole line.
 
 **v2.20.0** — first public cut. Sanitized: case studies, measured results and internal identifiers
 removed; three reference files extracted to replace them (`ten-laws.md`, `veto-gates.md`,

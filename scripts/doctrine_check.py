@@ -45,18 +45,34 @@ CMD_RE = re.compile(
     r"(?:[A-Za-z]:[\/](?:[^\s&|;]*[\/])?|\.{0,2}[\/])?"
     r"(python3?|bash|sh|pwsh|powershell|cmd|node|Rscript|sqlite3|curl|uv)\b")
 FENCE = re.compile(
-    r"(?ms)^[ \t]*(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^[ \t]*(?P=fence)[ \t]*$"
+    r"(?ms)^[ \t]*(?:(?P<bt>`{3,})[^\n]*\n.*?^[ \t]*(?P=bt)`*[ \t\r]*$"
+    r"|(?P<td>~{3,})[^\n]*\n.*?^[ \t]*(?P=td)~*[ \t\r]*$)"
 )
+# 完整围栏剥离后仍存在的围栏标记按未闭合处理：到文件末尾都只能当代码。
+UNFINISHED_FENCE = re.compile(r"(?ms)^[ \t]*(?:`{3,}|~{3,})[^\n]*(?:\n|$).*$")
 FENCE_LINE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 INLINE = re.compile(r"`[^`\n]*`")
 QUOTED = re.compile(r"「[^」\n]*」|“[^”\n]*”|\"[^\"\n]{0,30}\"")
+BANNED_DISCUSSION = re.compile(
+    r"(?:禁止|禁用|不得|不许|不要|避免)\s*"
+    r"(?:出现|使用|用|写(?:成|下|作)?|采用|引用|说|表述)"
+    r"|(?:禁用语|禁用词|禁止用语|禁止表述)"
+)
+# 豁免只覆盖「讨论句 + 紧跟其后的那一段引号」，不是整行。
+# 否则一行里只要出现「不要用」，同一行末尾的禁用结论（"基本有效"）就能白嫖豁免。
+BANNED_QUOTED = re.compile(
+    r"(?:" + BANNED_DISCUSSION.pattern + r")"
+    r"\s*[:：]?\s*(?P<q>「[^」\n]*」|“[^”\n]*”|\"[^\"\n]{0,30}\")"
+)
 
 
 def strip_code(text):
-    """去掉围栏代码块与行内代码（保留行结构），再做匹配"""
+    """去掉完整或未闭合的围栏代码块与行内代码（保留行结构），再做匹配"""
     def blank(m):
         return "\n" * m.group(0).count("\n")
-    return INLINE.sub(lambda m: " " * (m.end() - m.start()), FENCE.sub(blank, text))
+    stripped = FENCE.sub(blank, text)
+    stripped = UNFINISHED_FENCE.sub(blank, stripped)
+    return INLINE.sub(lambda m: " " * (m.end() - m.start()), stripped)
 
 
 def read_text_strict(path):
@@ -167,7 +183,7 @@ def _norm_num(tok: str) -> str:
 def check_number_consistency(secs) -> list[str]:
     """检查『3 判级理由』中引用的带符号小数/百分比指标是否在其余数据章节或表格中出现过。"""
     reason_words = CHECKS[2][1]
-    ref_text = "\n".join(b for h, b in secs if not any(w in h for w in reason_words))
+    ref_text = "\n".join(strip_code(b) for h, b in secs if not any(w in h for w in reason_words))
     reason_text = "\n".join(strip_code(b) for h, b in secs if any(w in h for w in reason_words))
     if not ref_text or not reason_text:
         return []
@@ -232,8 +248,9 @@ def check_doc(text, root=None):
     # 只有明确的禁用语讨论句才剔除引号；结论里的引号不提供豁免。
     prose_lines = []
     for line in strip_code(text).splitlines():
-        if any(k in line for k in ("禁止", "禁用", "不得", "不许", "不要", "避免")):
-            line = QUOTED.sub(lambda m: " " * (m.end() - m.start()), line)
+        if BANNED_DISCUSSION.search(line):
+            # 只剥紧跟讨论句的那段引号；同一行其它引号仍然算结论
+            line = BANNED_QUOTED.sub(lambda m: " " * (m.end() - m.start()), line)
         prose_lines.append(line)
     prose = "\n".join(prose_lines)
     hits = [w for w in FORBIDDEN if w in prose]
@@ -373,26 +390,26 @@ def render_gates(rep, path=""):
     return "\n".join(out)
 
 
-# 仅用于解析器自测的 fixture（含真实项目数值）；不作为报告示例或证据。
+# 仅用于解析器自测的合成 fixture；所有数字均为演示占位，不作为真实证据。
 GOOD = """# 示例结论
 
 ## 一、数据口径
-样本 3018 只，2020-11→2026-10，观测 4,102,570 条，单边成本 0.20%。
+样本 100 个，期间 P1→P2，观测 1,000 条（均为合成占位），单边成本 0.20%。
 
 ## 二、数字表
 | 持有期 | IC | t_HAC |
 |---|---:|---:|
-| 5 日 | -0.0225 | -4.07 |
+| 1 期 | -1.23 | -2.50 |
 
 ## 三、判级理由
 判 L3。排除了「样本不足」「成本假设错」两条解释。
 
 ## 四、可信度
-5 日 IC 可单独引用，其余打折。
+1 期 IC 可单独引用，其余打折。
 
 ## 六、重算命令
 ```bash
-python scripts/vkit.py ic --bars data/bars --factor f.csv
+python scripts/example_recompute.py --input data/example.csv
 ```
 
 ## 七、可引用的三条事实
@@ -465,18 +482,46 @@ def selftest():
     tilde_card = "~~~markdown\n" + CARD_PASS + "~~~\n"
     chk("~~~ 围栏内 gates 不得通过", check_gates(tilde_card)["verdict"] == "无法判定")
 
+    # 围栏闭合规则：闭合标记不短于开始标记即有效；未闭合围栏到文件末尾都是代码
+    long_fence_doc = "```markdown\n" + GOOD + "````\n"
+    chk("更长的闭合围栏内示例不得判可引用",
+        check_doc(long_fence_doc)["verdict"] != "可引用")
+    long_fence_card = "```markdown\n" + CARD_PASS + "````\n"
+    chk("更长的闭合围栏内 gates 不得通过",
+        check_gates(long_fence_card)["verdict"] == "无法判定")
+    unclosed_card = "```markdown\n" + CARD_PASS
+    chk("未闭合围栏内 gates 不得通过",
+        check_gates(unclosed_card)["verdict"] == "无法判定")
+    long_cmd = GOOD.replace(
+        "```bash\npython scripts/example_recompute.py --input data/example.csv\n```",
+        "```bash\npython scripts/example_recompute.py --input data/example.csv\n````")
+    chk("更长的闭合围栏内命令仍是有效证据",
+        check_doc(long_cmd)["verdict"] == "可引用")
+    unclosed_cmd = GOOD.replace(
+        "```bash\npython scripts/example_recompute.py --input data/example.csv\n```",
+        "```bash\npython scripts/example_recompute.py --input data/example.csv\n")
+    chk("未闭合围栏内命令不算证据", check_doc(unclosed_cmd)["verdict"] != "可引用")
+
+    smuggle = GOOD.replace("判 L3。", "这个定义不要用，它的结论\"基本有效\"。")
+    chk("讨论了禁用词也不能豁免同一行里的结论",
+        "基本有效" in "\n".join(check_doc(smuggle)["problems"])
+        or check_doc(smuggle)["verdict"] != "可引用")
+    legit = GOOD.replace("判 L3。", "禁用词不要写成\"基本有效\"这类说法。")
+    chk("正常讨论禁用词仍被豁免（不误报）",
+        not any("基本有效" in p for p in check_doc(legit)["problems"]))
+
     empty_prose = GOOD
-    for prose_txt in ("样本 3018 只，2020-11→2026-10，观测 4,102,570 条，单边成本 0.20%。",
+    for prose_txt in ("样本 100 个，期间 P1→P2，观测 1,000 条（均为合成占位），单边成本 0.20%。",
                       "判 L3。排除了「样本不足」「成本假设错」两条解释。",
-                      "5 日 IC 可单独引用，其余打折。",
+                      "1 期 IC 可单独引用，其余打折。",
                       "未覆盖样本外与容量。"):
         empty_prose = empty_prose.replace(prose_txt, "```text\n```")
     empty_rep = check_doc(empty_prose)
     chk("空代码围栏不算 prose 正文",
         empty_rep["verdict"] != "可引用" and len(empty_rep["missing_required"]) == 4)
     chk("未覆盖边界必须是最后一节", check_doc(GOOD + "\n## 附录\n额外说明。\n")["verdict"] != "可引用")
-    mixed_fence = GOOD.replace("python scripts/vkit.py ic --bars data/bars --factor f.csv",
-                               "~~~ 只是围栏内正文\n# 也不是标题\npython scripts/vkit.py ic --bars data/bars --factor f.csv")
+    mixed_fence = GOOD.replace("python scripts/example_recompute.py --input data/example.csv",
+                               "~~~ 只是围栏内正文\n# 也不是标题\npython scripts/example_recompute.py --input data/example.csv")
     chk("围栏内另一种标记不打断章节解析", check_doc(mixed_fence)["verdict"] == "可引用")
 
     chk("gates 全 0 且来源齐 = 通过", check_gates(CARD_PASS)["verdict"] == "验收通过")
@@ -529,11 +574,22 @@ def selftest():
     chk("数字对账：单位不同必须报",
         check_doc(_numdoc("判级：t=−1.23% 未过门槛。"))["verdict"] != "可引用")
 
+    # 数字对账的参照文本必须先剥代码：代码块里的同值数字不能给结论作保
+    code_number = _numdoc("判级：t=−9.99 未过门槛。")
+    code_number = code_number.replace(
+        "样本 100 只。", "样本 100 只。\n\n```text\n−9.99\n```")
+    chk("代码块中的数字不算对账依据", check_doc(code_number)["verdict"] != "可引用")
+
+    # 「不要」等词本身不是禁用语豁免：必须写成明确的禁用语讨论句
+    bypass = _numdoc("不要漏记：最终结论是「基本有效」。")
+    chk("普通『不要』句不豁免真实结论",
+        "基本有效" in check_doc(bypass)["forbidden"])
+
     # 脚本核验：--root 下重算命令引用的脚本必须真实存在
     here_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     chk("--root 下不存在的重算脚本被拒",
         check_doc(GOOD, root=here_root)["verdict"] != "可引用")
-    good_real_cmd = GOOD.replace("python scripts/vkit.py ic --bars data/bars --factor f.csv",
+    good_real_cmd = GOOD.replace("python scripts/example_recompute.py --input data/example.csv",
                                  "python scripts/doctrine_check.py --selftest")
     chk("--root 下真实存在的重算脚本通过",
         check_doc(good_real_cmd, root=here_root)["verdict"] == "可引用")
@@ -582,7 +638,8 @@ def selftest():
             print("  [FAIL]", item)
     else:
         print("  doc: 完整/残缺/假阳性/代码块引用 四类回归全过")
-        print("  gates: 通过/不通过/无法判定（缺行·缺键·重复·非法·未知·超长）全分支不崩")
+        print("  gates: 通过/不通过/无法判定（缺行·缺键·重复·非法·未知·超长·围栏）全分支不崩")
+        print("  对账/禁用语: 代码块数字不作依据；只有明确讨论句才豁免引号")
         print("  SKILL.md / README.md 判不可引用（自证线）")
     return not fails
 

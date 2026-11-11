@@ -124,7 +124,7 @@
 
 ```bash
 python scripts/doctrine_check.py 报告.md --root .
-python scripts/doc_dup_scan.py . --metric M1_before --metric IC
+python scripts/doc_dup_scan.py . --metric M1_before --metric M2
 python scripts/doc_dup_scan.py --selftest
 ```
 

@@ -1,9 +1,9 @@
-# Design Doctrine for Decision Tools · v2.20.2
+# Design Doctrine for Decision Tools · v2.20.3
 
 > Build the thing that can kill your idea — before you build your idea.
 
 A process card and a set of runnable checkers for one job: building a tool that someone will
-use to **make a decision** (buy / select / rank / flag / approve), and auditing one that already exists.
+use to **make a decision** (select / rank / flag / approve / reject), and auditing one that already exists.
 
 Not a tutorial. It is a checklist you execute, plus four zero-dependency checkers, all of which
 exit non-zero when they actually find something.
@@ -111,7 +111,9 @@ is what this section is for.
 
 ## Changelog
 
-**v2.20.2** — second sanitization pass and one checker fix: market-specific wording (stock picking, tickers, order types, trading days, filing types, positions) generalized in `SKILL.md` and six reference files; the pre-registration card example replaced with a non-market metric; `--gates` now refuses a gates line indented 4+ spaces or by a tab (an indented code block in Markdown) instead of passing it; the Chinese README no longer says only three of the four checkers exit non-zero.
+**v2.20.3** — a second batch of market-specific wording generalized (`SKILL.md`, `README`, `veto-gates.md` and other reference files); method and gate structure unchanged; no checker or criterion changed.
+
+**v2.20.2** — second sanitization pass and one checker fix: a first batch of market-specific wording generalized in `SKILL.md` and six reference files; the pre-registration card example replaced with a non-market metric; `--gates` now refuses a gates line indented 4+ spaces or by a tab (an indented code block in Markdown) instead of passing it; the Chinese README no longer says only three of the four checkers exit non-zero.
 
 **v2.20.1** — sanitization and checker fixes from an independent review: selftest fixture no longer carries real measurements; residual measured t-values removed; domain naming abstracted to a calibration-status statement; fence parsing hardened (longer closing fences, unclosed fences); code-block numbers no longer count as registered evidence; banned-word exemption narrowed to the quoted span that follows the discussion phrase instead of the whole line.
 

@@ -71,7 +71,7 @@ def main(argv=None):
     ap.add_argument("--min-len", type=int, default=19, help="计入比较的最小行长（默认 19）")
     ap.add_argument("--fact", action="append", default=[], help="要数落点的事实串，可重复")
     ap.add_argument("--ignore", action="append", default=[], help="额外忽略的文件名，可重复")
-    ap.add_argument("--metric", action="append", default=[], help="检查同名指标跨文件数值是否一致（如 IC、M1_before）")
+    ap.add_argument("--metric", action="append", default=[], help="检查同名指标跨文件数值是否一致（如 M1、M1_before）")
     args = ap.parse_args(argv)
     if args.selftest:
         return 0 if selftest() else 1

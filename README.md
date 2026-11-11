@@ -1,4 +1,4 @@
-# Design Doctrine for Decision Tools · v2.20.1
+# Design Doctrine for Decision Tools · v2.20.2
 
 > Build the thing that can kill your idea — before you build your idea.
 
@@ -110,6 +110,8 @@ the method. Two copies coexisting is not drift — but only if the relationship 
 is what this section is for.
 
 ## Changelog
+
+**v2.20.2** — second sanitization pass and one checker fix: market-specific wording (stock picking, tickers, order types, trading days, filing types, positions) generalized in `SKILL.md` and six reference files; the pre-registration card example replaced with a non-market metric; `--gates` now refuses a gates line indented 4+ spaces or by a tab (an indented code block in Markdown) instead of passing it; the Chinese README no longer says only three of the four checkers exit non-zero.
 
 **v2.20.1** — sanitization and checker fixes from an independent review: selftest fixture no longer carries real measurements; residual measured t-values removed; domain naming abstracted to a calibration-status statement; fence parsing hardened (longer closing fences, unclosed fences); code-block numbers no longer count as registered evidence; banned-word exemption narrowed to the quoted span that follows the discussion phrase instead of the whole line.
 

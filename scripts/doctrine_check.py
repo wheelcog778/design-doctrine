@@ -9,7 +9,7 @@
   1. 先剥 fenced 代码块与行内代码，再做任何匹配 —— 讲格式的文档不能被自己的例子命中
   2. 七件套按**标题**定位：必须有一个标题命中该项关键词，且该节正文非空
   3. 证据型两项（数字表 / 重算命令）在该节正文里找具体形态；空围栏不算命令、表头不算数字表
-  4. gates 行必须完整落在 `<!-- ... -->` 内；缺键 / 多键 / 重复键 / 非数字值 / 缺 M1_src 一律「无法判定」
+  4. gates 行必须完整落在 `<!-- ... -->` 内且顶格（缩进 ≥4 视为代码示例）；缺键 / 多键 / 重复键 / 非数字值 / 缺 M1_src 一律「无法判定」
   5. 所有分支返回同一套键：mode / verdict / problems / notes / gates
 
 用法:
@@ -287,6 +287,10 @@ def check_gates(text):
     if len(blocks) > 1:
         rep["problems"].append(f"gates 行出现 {len(blocks)} 次，无法判定以哪条为准")
         return rep
+    # 缩进 ≥4 空格或以 Tab 开头的 gates 行按 CommonMark 是缩进代码块里的示例：不猜，按无法判定处理（fail-closed）
+    if re.search(r"(?m)^(?: {4,}|\t)[ \t]*<!--\s*gates:", strip_code(text)):
+        rep["problems"].append("gates 行缩进 ≥4 空格或以 Tab 开头（可能是缩进代码块里的示例），无法判定；请顶格写")
+        return rep
     body = blocks[0]
     if not body.strip():
         rep["problems"].append("gates 行为空")
@@ -492,6 +496,12 @@ def selftest():
     unclosed_card = "```markdown\n" + CARD_PASS
     chk("未闭合围栏内 gates 不得通过",
         check_gates(unclosed_card)["verdict"] == "无法判定")
+    for pad in ("    ", "\t", "1. item\n\n    "):
+        indented_card = "# t\n\n" + pad + "<!-- gates: M1=3 M2=0 M3=0 M4=0 M5=0 M1_src=dual -->\n"
+        chk(f"缩进 gates 行不得通过（{pad!r}）",
+            check_gates(indented_card)["verdict"] == "无法判定")
+    chk("缩进 ≤3 空格的 gates 行仍可通过",
+        check_gates("   <!-- gates: M1=3 M2=0 M3=0 M4=0 M5=0 M1_src=dual -->\n")["verdict"] == "验收通过")
     long_cmd = GOOD.replace(
         "```bash\npython scripts/example_recompute.py --input data/example.csv\n```",
         "```bash\npython scripts/example_recompute.py --input data/example.csv\n````")
@@ -560,7 +570,7 @@ def selftest():
         nj = chr(10)
         return nj.join([
             "# t", "",
-            "## 一、数据口径", "样本 100 只。", "",
+            "## 一、数据口径", "样本 100 个。", "",
             "## 二、数字表", "| 项 | 值 |", "|---|---|", "| t_HAC | -1.23 |", "",
             "## 三、判级理由", reason, "",
             "## 四、可信度", "可引用。", "",
@@ -577,7 +587,7 @@ def selftest():
     # 数字对账的参照文本必须先剥代码：代码块里的同值数字不能给结论作保
     code_number = _numdoc("判级：t=−9.99 未过门槛。")
     code_number = code_number.replace(
-        "样本 100 只。", "样本 100 只。\n\n```text\n−9.99\n```")
+        "样本 100 个。", "样本 100 个。\n\n```text\n−9.99\n```")
     chk("代码块中的数字不算对账依据", check_doc(code_number)["verdict"] != "可引用")
 
     # 「不要」等词本身不是禁用语豁免：必须写成明确的禁用语讨论句
@@ -601,7 +611,7 @@ def selftest():
     # 对抗用例 2：数字表不在对应章节（全文找表 = 假通过）
     global_table = NJ.join([
         "# t", "",
-        "## 一、数据口径", "样本 100 只。", "",
+        "## 一、数据口径", "样本 100 个。", "",
         "| a | b |", "|---|---|", "| 1 | 2 |", "",
         "## 三、判级理由", "L1。", "",
         "## 四、可信度", "可信。", "",
